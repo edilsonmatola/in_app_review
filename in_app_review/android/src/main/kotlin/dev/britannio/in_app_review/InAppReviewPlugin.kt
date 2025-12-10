@@ -71,12 +71,15 @@ class InAppReviewPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     private fun isAvailable(result: Result) {
         Log.i(TAG, "isAvailable: called")
-        if (noContextOrActivity()) {
+        
+        val currentContext = context
+        if (currentContext == null) {
             result.success(false)
             return
         }
+        
         try {
-            val manager = ReviewManagerFactory.create(context!!)
+            val manager = ReviewManagerFactory.create(currentContext)
             val request = manager.requestReviewFlow()
             request.addOnCompleteListener { task ->
                 if (task.isSuccessful) {
@@ -94,16 +97,29 @@ class InAppReviewPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     private fun requestReview(result: Result) {
         Log.i(TAG, "requestReview: called")
-        if (noContextOrActivity(result)) return
+        
+        val (currentContext, currentActivity) = getContextAndActivity(result) ?: return
 
         try {
-            val manager = ReviewManagerFactory.create(context!!)
+            val manager = ReviewManagerFactory.create(currentContext)
             val request = manager.requestReviewFlow()
             request.addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     Log.i(TAG, "onComplete: Successfully requested review flow")
                     val info = task.result
-                    val flow = manager.launchReviewFlow(activity!!, info)
+                    
+                    val activityForReview = activity
+                    if (activityForReview == null) {
+                        Log.w(TAG, "Activity is no longer available")
+                        result.error(
+                            "error",
+                            "Activity is no longer available",
+                            null
+                        )
+                        return@addOnCompleteListener
+                    }
+                    
+                    val flow = manager.launchReviewFlow(activityForReview, info)
                     flow.addOnCompleteListener {
                         // The API does not indicate whether the user reviewed or if the dialog was shown.
                         result.success(null)
@@ -129,12 +145,14 @@ class InAppReviewPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     private fun openStoreListing(result: Result) {
         Log.i(TAG, "openStoreListing: called")
-        if (noContextOrActivity(result)) return
+        
+        val (currentContext, currentActivity) = getContextAndActivity(result) ?: return
+        
         try {
-            val packageName = context!!.packageName
+            val packageName = currentContext.packageName
             val intent = Intent(Intent.ACTION_VIEW)
                 .setData("https://play.google.com/store/apps/details?id=$packageName".toUri())
-            activity!!.startActivity(intent)
+            currentActivity.startActivity(intent)
             result.success(null)
         } catch (e: Exception) {
             Log.e(TAG, "openStoreListing: error", e)
@@ -146,24 +164,25 @@ class InAppReviewPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         }
     }
 
-    private fun noContextOrActivity(result: Result? = null): Boolean {
-        Log.i(TAG, "noContextOrActivity: called")
-
-        if (context == null) {
+    private fun getContextAndActivity(result: Result): Pair<Context, Activity>? {
+        val currentContext = context
+        val currentActivity = activity
+        
+        if (currentContext == null) {
             val msg = "Android context not available"
-            Log.e(TAG, "noContextOrActivity: $msg")
-            result?.error("error", msg, null)
-            return true
+            Log.e(TAG, msg)
+            result.error("error", msg, null)
+            return null
         }
-
-        if (activity == null) {
+        
+        if (currentActivity == null) {
             val msg = "Android activity not available"
-            Log.e(TAG, "noContextOrActivity: $msg")
-            result?.error("error", msg, null)
-            return true
+            Log.e(TAG, msg)
+            result.error("error", msg, null)
+            return null
         }
-
-        return false
+        
+        return Pair(currentContext, currentActivity)
     }
 
 }
