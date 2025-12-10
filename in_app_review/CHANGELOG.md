@@ -1,3 +1,8 @@
+# [2.0.12]
+
+- Fix Android NPE crash when Activity is detached during async review request
+
+
 # [2.0.11]
 
 - Regenerate the plugin & migrate Android platform code from Java to Kotlin
