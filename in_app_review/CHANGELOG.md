@@ -1,7 +1,12 @@
+# [2.0.13]
+
+- Migrate the Android build to built-in Kotlin for Android Gradle Plugin (AGP) 9+ compatibility.
+- Apply the Kotlin Gradle Plugin (KGP) only when the Android Gradle Plugin version is below 9.
+- Bump the Android compileSdkVersion to 36.
+
 # [2.0.12]
 
-- Fix Android NPE crash when Activity is detached during async review request
-
+- Fix an Android NullPointerException that sometimes occurred when apps were backgrounded.
 
 # [2.0.11]
 
